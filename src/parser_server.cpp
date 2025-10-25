@@ -54,10 +54,10 @@ void server_parseopt(server_arguments& args, int argc, char *argv[]) {
 		struct argp_option options[] = {
 		{ "port", 'p', "port", 0, "The port to be used for the server", 0},
 		{ "drop_rate", 'd', "drop_rate", 0, "The rate of dropping packets by the server. Zero by default", 0},
-		{ 0, 0 }
+		{ 0, 0, 0, 0, 0, 0}
 	};
 
-	struct argp argp_settings = { options, server_parser, 0, 0 };
+	struct argp argp_settings = { options, server_parser, 0, 0, 0, 0, 0 };
 
 	if (argp_parse(&argp_settings, argc, argv, 0, NULL, &args) != 0)
 		cout << "Got an error condition when parsing\n";
