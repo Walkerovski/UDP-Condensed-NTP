@@ -36,6 +36,9 @@ int main(int argc, char *argv[]) {
             return 1;
         }
 
+        vector<bool> recieved(args.reqnum + 1, false);
+        vector<int64_t> recieved_theta(args.reqnum + 1, static_cast<int64_t>(0));
+        vector<int64_t> recieved_delta(args.reqnum + 1, static_cast<int64_t>(0));
 
         for (int i = 1; i <= args.reqnum; ++i) {
 
@@ -49,12 +52,17 @@ int main(int argc, char *argv[]) {
                 static_cast<uint32_t>(7)
             );
             req.sendTo(sockfd, args.addr);
+        }
 
+        time_t last_response_time = time(nullptr);
+        for (int i = 1; i <= args.reqnum; ++i) {
             TimeResponse resp{};
             resp.receive(sockfd, args.addr);
-            if (resp.version == 0) {
-                cout << i << ": Droppped\n";
-                continue;
+            if (args.timeout > 0 && difftime(time(nullptr), last_response_time) >= args.timeout)
+                break;
+            if (resp.sequence_number > 0) {
+                last_response_time = time(nullptr);
+                recieved[resp.sequence_number] = true;
             }
 
             ts = gettime();
@@ -63,7 +71,18 @@ int main(int argc, char *argv[]) {
             int64_t T2 = static_cast<int64_t>(ts.tv_sec);
             int64_t tetha = ((T1 - T0) + (T1 - T2))/2;
             int64_t delta = T2 - T0;
-            cout << resp.sequence_number << ": " << tetha << " " << delta << "\n";
+            recieved[resp.sequence_number] = true;
+            recieved_theta[resp.sequence_number] = tetha;
+            recieved_delta[resp.sequence_number] = delta;
+        }
+
+        for (int i = 1; i <= args.reqnum; ++i) {
+            if (recieved[i]) {
+                cout << i << ": " << recieved_theta[i] << " " << recieved_delta[i] << "\n";
+            }
+            else {
+                cout << i << ": Droppped\n";
+            }
         }
     } catch (const exception &ex) {
         cerr << "Error: " << ex.what() << "\n";
