@@ -29,6 +29,14 @@ int main(int argc, char *argv[]) {
             return 1;
         }
 
+        struct timeval tv{};
+        tv.tv_sec = args.timeout;
+        if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
+            cerr << "setsockopt(SO_RCVTIMEO) failed: " << strerror(errno) << "\n";
+            return 1;
+        }
+
+
         for (int i = 1; i <= args.reqnum; ++i) {
 
             TimeRequest req{};
@@ -44,6 +52,10 @@ int main(int argc, char *argv[]) {
 
             TimeResponse resp{};
             resp.receive(sockfd, args.addr);
+            if (resp.version == 0) {
+                cout << i << ": Droppped\n";
+                continue;
+            }
 
             ts = gettime();
             int64_t T0 = static_cast<int64_t>(resp.client_seconds);

@@ -44,8 +44,10 @@ void TimeRequest::receive(int sockfd, sockaddr_in& addr) {
     ssize_t recv_len = recvfrom(sockfd, this, sizeof(*this), 0,
                                 (struct sockaddr*)&addr, &addr_len);
     if (recv_len < 0) {
-        cerr << "recvfrom() failed: " << strerror(errno) << "\n";
-        return;
+        if (errno != EWOULDBLOCK || errno != EAGAIN) {
+            cerr << "recvfrom() failed: " << strerror(errno) << "\n";
+            return;
+        }
     }
     this->sequence_number = ntohl(this->sequence_number);
     this->version = ntohl(this->version);
@@ -78,8 +80,10 @@ void TimeResponse::receive(int sockfd, sockaddr_in& addr) {
     ssize_t recv_len = recvfrom(sockfd, this, sizeof(*this), 0,
                                 (struct sockaddr*)&addr, &addr_len);
     if (recv_len < 0) {
-        cerr << "recvfrom() failed: " << strerror(errno) << "\n";
-        return;
+        if (errno != EWOULDBLOCK || errno != EAGAIN) {
+            cerr << "recvfrom() failed: " << strerror(errno) << "\n";
+            return;
+        }
     }
     this->sequence_number = ntohl(this->sequence_number);
     this->version = ntohl(this->version);
