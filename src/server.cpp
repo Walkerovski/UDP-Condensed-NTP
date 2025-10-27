@@ -4,7 +4,6 @@
 #include <iostream>
 #include <cstring>
 #include <unistd.h>
-#include <thread>
 #include <arpa/inet.h>
 #include <time.h>
 #include <unordered_map>
@@ -12,7 +11,7 @@
 
 using namespace std;
 
-timespec gettime() {
+timespec getTime() {
     struct timespec ts;
     if (clock_gettime(CLOCK_REALTIME, &ts) != 0)
         perror("clock_gettime");
@@ -44,30 +43,33 @@ string buildClientKey(sockaddr_in client_addr) {
 template <typename ReqType, typename RespType>
 void handleRequest(
     int sockfd,
-    sockaddr_in& client_addr,
     unordered_map<string, pair<uint32_t, time_t>>& client_map,
     server_arguments args,
     const int EXPIRATION
 ) {
+    struct sockaddr_in client_addr;
     ReqType req{};
     req.receive(sockfd, client_addr);
+    
     time_t now = time(nullptr);
     string key = buildClientKey(client_addr);
-    if (!client_map.count(key) || (now - client_map[key].second) > EXPIRATION) {
-        client_map[key] = {req.sequence_number, now};
+
+    auto& entry = client_map[key];
+    if (entry.second == 0 || (now - entry.second) > EXPIRATION) {
+        entry = {req.sequence_number, now};
     } else {
-        uint32_t prev_max = client_map[key].first;
+        uint32_t prev_max = entry.first;
 
         if (req.sequence_number < prev_max) {
             cout << key << " " << req.sequence_number << " " << prev_max << "\n";
         } else if (req.sequence_number > prev_max) {
-            client_map[key].first = req.sequence_number;
+            entry.first = req.sequence_number;
         }
-        client_map[key].second = now;
+        entry.second = now;
     }
     RespType resp{};
     struct timespec ts;
-    ts = gettime();
+    ts = getTime();
     resp.setValues(
         req.sequence_number,
         req.client_seconds,
@@ -85,6 +87,10 @@ int main(int argc, char *argv[]) {
     server_parseopt(args, argc, argv);
 
     int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd < 0) {
+        perror("socket");
+        return 1;
+    }
     if(initializeSocket(args, sockfd)) {
         cerr << "Server setup failed. Exiting cleanly.\n";
         close(sockfd);
@@ -94,17 +100,16 @@ int main(int argc, char *argv[]) {
     unordered_map<string, pair<uint32_t, time_t>> client_map;
     const int EXPIRATION = 120;
 
+    srand(time(nullptr));
 
     while (true) {
-        struct sockaddr_in client_addr;
-
         if (args.condensed) {
             handleRequest<CondensedTimeRequest, CondensedTimeResponse>(
-                sockfd, client_addr, client_map, args, EXPIRATION
+                sockfd, client_map, args, EXPIRATION
             );
         } else {
             handleRequest<TimeRequest, TimeResponse>(
-                sockfd, client_addr, client_map, args, EXPIRATION
+                sockfd, client_map, args, EXPIRATION
             );
         }
     }

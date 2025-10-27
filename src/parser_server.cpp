@@ -69,4 +69,5 @@ void server_parseopt(server_arguments& args, int argc, char *argv[]) {
 
     cout << "Port set for: " << args.port << "\n";
 	cout << "Drop rate set for: " << args.drop_rate << "\n";
+	cout << "Condensed mode: " << args.condensed << "\n";
 }
