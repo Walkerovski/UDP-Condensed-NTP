@@ -38,12 +38,47 @@ The system uses two message types:
 
 ---
 
+---
+
+## Condensed Protocol
+
+The system uses two message types:
+
+1. **CondensedTimeRequest** (Client → Server)
+   Contains sequence number and client timestamp.
+
+2. **CondensedTimeResponse** (Server → Client)
+   Contains sequence number, client timestamp, and server timestamp.
+
+### CondensedTimeRequest Format
+
+| Field              | Type    | Description                                             |
+| ------------------ | ------- | ------------------------------------------------------- |
+| Sequence Number    | 4 bytes | Integer in network byte order identifying request order |
+| Version            | <ins>2 bytes</ins> | Integer (always `7`)                                    |
+| Client Seconds     | 8 bytes | Time in seconds when the client sent the request        |
+| Client Nanoseconds | 8 bytes | Time in nanoseconds when the client sent the request    |
+
+### CondensedTimeResponse Format
+
+| Field              | Type    | Description                                           |
+| ------------------ | ------- | ----------------------------------------------------- |
+| Sequence Number    | 4 bytes | Same as in the request                                |
+| Version            | <ins>2 bytes</ins> | Integer (always `7`)                                  |
+| Client Seconds     | 8 bytes | From the original request                             |
+| Client Nanoseconds | 8 bytes | From the original request                             |
+| Server Seconds     | 8 bytes | Time in seconds when the server sent the response     |
+| Server Nanoseconds | 8 bytes | Time in nanoseconds when the server sent the response |
+
+---
+
+
 ## Server Implementation
 
 ### Usage
 
 ```bash
-server -p <port> -d <drop_rate>
+server -p <port> -d <drop_rate> -c
 ```
 
 ### Arguments
@@ -53,6 +88,7 @@ server -p <port> -d <drop_rate>
 
   * Range: 0–100
   * Default: 0 (no packets dropped)
+* `-c`: Optional if present, triggers condensed version of protocol
 
 ### Example
 
@@ -94,6 +130,7 @@ client -a <address> -p <port> -n <count> -t <timeout>
 * `-t <Number>`: Timeout in seconds for waiting on responses
 
   * `0` means wait indefinitely
+* `-c`: Optional if present, triggers condensed version of protocol
 
 ### Example
 

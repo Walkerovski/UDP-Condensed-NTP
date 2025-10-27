@@ -20,10 +20,11 @@ struct client_arguments {
 bool isNumber(const std::string& s);
 
 /* Parse client command-line options. Supports:
- *   -a / --addr    : required IPv4 address (validated with inet_pton)
- *   -p / --port    : required port number (range 1025–65535)
- *   -n / --number  : required number of time requests (>= 0)
- *   -t / --timeout : optional time before timeout (seconds, 0 -> indefinitely)
+ *   -a / --addr      : required IPv4 address (validated with inet_pton)
+ *   -p / --port      : required port number (range 1025–65535)
+ *   -n / --number    : required number of time requests (>= 0)
+ *   -t / --timeout   : optional time before timeout (seconds, 0 -> indefinitely)
+ *   -c / --condensed : optional use condensed version of protocol
  *
  * Called by argp for each option. Performs validation and fills
  * a client_arguments struct. On invalid or missing options, reports
