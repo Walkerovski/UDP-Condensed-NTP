@@ -52,6 +52,10 @@ error_t client_parser(int key, char *arg, struct argp_state *state) {
 			argp_error(state, "The lenght of timeout (-t --timeout), must be >= 0");
 
 		break;
+	case 'c':
+		args->condensed = true;
+
+		break;
     case ARGP_KEY_END:
         if (args->addr.sin_addr.s_addr == INADDR_ANY)
             argp_error(state, "Option -a (--addr) is required!");
@@ -75,6 +79,7 @@ void client_parseopt(client_arguments& args, int argc, char *argv[]) {
 		{"port", 'p', "port", 0, "The port that is being used at the server", 0},
 		{"number", 'n', "num", 0, "The number of requests to send to the server", 0},
 		{"timeout", 't', "timeout", 0, "The timeout for the client", 0},
+		{"condensed", 'c', 0, 0, "Use the condensed version of the message", 0},
 		{0, 0, 0, 0, 0, 0}
 	};
 

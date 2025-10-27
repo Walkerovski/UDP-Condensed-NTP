@@ -11,6 +11,7 @@ struct client_arguments {
     struct sockaddr_in addr;
     int reqnum = -1;
     int timeout = -1;
+    bool condensed = false;
 };
 
 /* Verifies whether provided string can be parsed as numbers

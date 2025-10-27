@@ -8,6 +8,7 @@
 struct server_arguments {
     int port;
     int drop_rate;
+    bool condensed = false;
 };
 
 /* Verifies whether provided values can be parsed as numbers

@@ -38,6 +38,10 @@ error_t server_parser(int key, char *arg, struct argp_state *state) {
 		args->drop_rate = atoi(arg);
 
 		break;
+	case 'c':
+		args->condensed = true;
+
+		break;
     case ARGP_KEY_END:
         if (args->port == 0)
             argp_error(state, "Option -p (--port) is required!");
@@ -54,6 +58,7 @@ void server_parseopt(server_arguments& args, int argc, char *argv[]) {
 		struct argp_option options[] = {
 		{ "port", 'p', "port", 0, "The port to be used for the server", 0},
 		{ "drop_rate", 'd', "drop_rate", 0, "The rate of dropping packets by the server. Zero by default", 0},
+		{"condensed", 'c', 0, 0, "Use the condensed version of the message", 0},
 		{ 0, 0, 0, 0, 0, 0}
 	};
 

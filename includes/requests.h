@@ -67,4 +67,34 @@ struct TimeResponse {
     void receive(int sockfd, sockaddr_in& client_addr);
 };
 
+#pragma pack(push, 1)
+struct CondensedTimeRequest {
+    uint32_t sequence_number;
+    uint16_t version;
+    uint64_t client_seconds;
+    uint64_t client_nanoseconds;
+
+    void setValues(uint32_t seq_num, uint64_t client_sec, uint64_t client_nanosec, uint16_t ver = 7);
+    void sendTo(int sockfd, sockaddr_in& client_addr) const;
+    void receive(int sockfd, sockaddr_in& client_addr);
+};
+#pragma pack(pop)
+
+#pragma pack(push, 1)
+struct CondensedTimeResponse {
+    uint32_t sequence_number;
+    uint16_t version;
+    uint64_t client_seconds;
+    uint64_t client_nanoseconds;
+    uint64_t server_seconds;
+    uint64_t server_nanoseconds;
+
+    void setValues(uint32_t seq_num, uint64_t client_sec, uint64_t client_nanosec,
+                   uint64_t server_sec, uint64_t server_nanosec, uint16_t ver = 7);
+    void sendTo(int sockfd, sockaddr_in& client_addr) const;
+    void receive(int sockfd, sockaddr_in& client_addr);
+};
+#pragma pack(pop)
+
+
 #endif // REQUESTS_H
