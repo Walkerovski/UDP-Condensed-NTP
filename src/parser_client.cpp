@@ -89,5 +89,5 @@ void client_parseopt(client_arguments& args, int argc, char *argv[]) {
 		cout << "Got an error condition when parsing\n";
 
 	cout << "Address: " << inet_ntoa(args.addr.sin_addr) << ":" << ntohs(args.addr.sin_port) << ", n="
-        << args.reqnum << ", t=" <<  args.timeout << "\n";
+        << args.reqnum << ", t=" <<  args.timeout << ", c=" << args.condensed << "\n";
 }

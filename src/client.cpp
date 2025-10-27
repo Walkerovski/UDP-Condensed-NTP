@@ -21,7 +21,7 @@ template <typename ReqType>
 void sendRequest(
     int sockfd,
     int i,
-    client_arguments args
+    client_arguments& args
 ) {
     ReqType req{};
     struct timespec ts = gettime();
@@ -37,30 +37,35 @@ void sendRequest(
 template <typename RespType>
 bool handleResponse(
     int sockfd,
-    client_arguments args,
+    client_arguments& args,
     time_t& last_response_time,
-    vector<bool>& recieved,
-    vector<int64_t>& recieved_theta,
-    vector<int64_t>& recieved_delta
+    vector<bool>& received,
+    vector<int64_t>& received_theta,
+    vector<int64_t>& received_delta
 ) {
     RespType resp{};
     resp.receive(sockfd, args.addr);
+
     if (args.timeout > 0 && difftime(time(nullptr), last_response_time) >= args.timeout)
         return true;
-    if (resp.sequence_number > 0) {
-        last_response_time = time(nullptr);
-        recieved[resp.sequence_number] = true;
+
+    if (resp.sequence_number <= 0) {
+        return false;
     }
 
+    last_response_time = time(nullptr);
     struct timespec ts = gettime();
     int64_t T0 = static_cast<int64_t>(resp.client_seconds);
     int64_t T1 = static_cast<int64_t>(resp.server_seconds);
     int64_t T2 = static_cast<int64_t>(ts.tv_sec);
-    int64_t tetha = ((T1 - T0) + (T1 - T2))/2;
+
+    int64_t theta = ((T1 - T0) + (T1 - T2))/2;
     int64_t delta = T2 - T0;
-    recieved[resp.sequence_number] = true;
-    recieved_theta[resp.sequence_number] = tetha;
-    recieved_delta[resp.sequence_number] = delta;
+
+    received[resp.sequence_number] = true;
+    received_theta[resp.sequence_number] = theta;
+    received_delta[resp.sequence_number] = delta;
+
     return false;
 }
 
@@ -82,56 +87,29 @@ int main(int argc, char *argv[]) {
             return 1;
         }
 
-        vector<bool> recieved(args.reqnum + 1, false);
-        vector<int64_t> recieved_theta(args.reqnum + 1, static_cast<int64_t>(0));
-        vector<int64_t> recieved_delta(args.reqnum + 1, static_cast<int64_t>(0));
+        vector<bool> received(args.reqnum + 1, false);
+        vector<int64_t> received_theta(args.reqnum + 1, static_cast<int64_t>(0));
+        vector<int64_t> received_delta(args.reqnum + 1, static_cast<int64_t>(0));
 
         for (int i = 1; i <= args.reqnum; ++i) {
-            if (args.condensed) {
-                sendRequest<CondensedTimeRequest>(sockfd, i, args);
-            } else {
-                sendRequest<TimeRequest>(sockfd, i, args);
-            }
+            args.condensed
+                ? sendRequest<CondensedTimeRequest>(sockfd, i, args)
+                : sendRequest<TimeRequest>(sockfd, i, args);
         }
 
         time_t last_response_time = time(nullptr);
         for (int i = 1; i <= args.reqnum; ++i) {
-            if (args.condensed) {
-                if (
-                    handleResponse<CondensedTimeResponse>(
-                    sockfd, 
-                    args, 
-                    last_response_time, 
-                    recieved, 
-                    recieved_theta, 
-                    recieved_delta
-                    )
-                ) {
-                    break;
-                }
-            } else {
-                if (
-                    handleResponse<TimeResponse>(
-                    sockfd, 
-                    args, 
-                    last_response_time, 
-                    recieved, 
-                    recieved_theta, 
-                    recieved_delta
-                    )
-                ) {
-                    break;
-                }
-            }
+            const bool timeout = args.condensed
+                ? handleResponse<CondensedTimeResponse>(sockfd, args, last_response_time, received, received_theta, received_delta)
+                : handleResponse<TimeResponse>(sockfd, args, last_response_time, received, received_theta, received_delta);
+
+            if (timeout) break;
         }
 
         for (int i = 1; i <= args.reqnum; ++i) {
-            if (recieved[i]) {
-                cout << i << ": " << recieved_theta[i] << " " << recieved_delta[i] << "\n";
-            }
-            else {
-                cout << i << ": Droppped\n";
-            }
+            received[i]
+                ? cout << i << ": " << received_theta[i] << " " << received_delta[i] << "\n"
+                : cout << i << ": Droppped\n";
         }
     } catch (const exception &ex) {
         cerr << "Error: " << ex.what() << "\n";
