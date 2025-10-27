@@ -17,11 +17,57 @@ timespec gettime() {
     return ts;
 }
 
+template <typename ReqType>
+void sendRequest(
+    int sockfd,
+    int i,
+    client_arguments args
+) {
+    ReqType req{};
+    struct timespec ts = gettime();
+    req.setValues(
+        static_cast<uint32_t>(i),
+        static_cast<uint64_t>(ts.tv_sec),
+        static_cast<uint64_t>(ts.tv_nsec),
+        static_cast<uint32_t>(7)
+    );
+    req.sendTo(sockfd, args.addr);
+}
+
+template <typename RespType>
+bool handleResponse(
+    int sockfd,
+    client_arguments args,
+    time_t& last_response_time,
+    vector<bool>& recieved,
+    vector<int64_t>& recieved_theta,
+    vector<int64_t>& recieved_delta
+) {
+    RespType resp{};
+    resp.receive(sockfd, args.addr);
+    if (args.timeout > 0 && difftime(time(nullptr), last_response_time) >= args.timeout)
+        return true;
+    if (resp.sequence_number > 0) {
+        last_response_time = time(nullptr);
+        recieved[resp.sequence_number] = true;
+    }
+
+    struct timespec ts = gettime();
+    int64_t T0 = static_cast<int64_t>(resp.client_seconds);
+    int64_t T1 = static_cast<int64_t>(resp.server_seconds);
+    int64_t T2 = static_cast<int64_t>(ts.tv_sec);
+    int64_t tetha = ((T1 - T0) + (T1 - T2))/2;
+    int64_t delta = T2 - T0;
+    recieved[resp.sequence_number] = true;
+    recieved_theta[resp.sequence_number] = tetha;
+    recieved_delta[resp.sequence_number] = delta;
+    return false;
+}
+
 int main(int argc, char *argv[]) {
     try {
         client_arguments args{};
         client_parseopt(args, argc, argv);
-        struct timespec ts;
 
         int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
         if (sockfd < 0) {
@@ -41,39 +87,42 @@ int main(int argc, char *argv[]) {
         vector<int64_t> recieved_delta(args.reqnum + 1, static_cast<int64_t>(0));
 
         for (int i = 1; i <= args.reqnum; ++i) {
-
-            TimeRequest req{};
-
-            ts = gettime();
-            req.setValues(
-                static_cast<uint32_t>(i),
-                static_cast<uint64_t>(ts.tv_sec),
-                static_cast<uint64_t>(ts.tv_nsec),
-                static_cast<uint32_t>(7)
-            );
-            req.sendTo(sockfd, args.addr);
+            if (args.condensed) {
+                sendRequest<CondensedTimeRequest>(sockfd, i, args);
+            } else {
+                sendRequest<TimeRequest>(sockfd, i, args);
+            }
         }
 
         time_t last_response_time = time(nullptr);
         for (int i = 1; i <= args.reqnum; ++i) {
-            TimeResponse resp{};
-            resp.receive(sockfd, args.addr);
-            if (args.timeout > 0 && difftime(time(nullptr), last_response_time) >= args.timeout)
-                break;
-            if (resp.sequence_number > 0) {
-                last_response_time = time(nullptr);
-                recieved[resp.sequence_number] = true;
+            if (args.condensed) {
+                if (
+                    handleResponse<CondensedTimeResponse>(
+                    sockfd, 
+                    args, 
+                    last_response_time, 
+                    recieved, 
+                    recieved_theta, 
+                    recieved_delta
+                    )
+                ) {
+                    break;
+                }
+            } else {
+                if (
+                    handleResponse<TimeResponse>(
+                    sockfd, 
+                    args, 
+                    last_response_time, 
+                    recieved, 
+                    recieved_theta, 
+                    recieved_delta
+                    )
+                ) {
+                    break;
+                }
             }
-
-            ts = gettime();
-            int64_t T0 = static_cast<int64_t>(resp.client_seconds);
-            int64_t T1 = static_cast<int64_t>(resp.server_seconds);
-            int64_t T2 = static_cast<int64_t>(ts.tv_sec);
-            int64_t tetha = ((T1 - T0) + (T1 - T2))/2;
-            int64_t delta = T2 - T0;
-            recieved[resp.sequence_number] = true;
-            recieved_theta[resp.sequence_number] = tetha;
-            recieved_delta[resp.sequence_number] = delta;
         }
 
         for (int i = 1; i <= args.reqnum; ++i) {
